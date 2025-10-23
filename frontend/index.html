@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Performance Analyzer</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header { 
+            background: #2c3e50; 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        h1 { 
+            font-size: 2.5em; 
+            margin: 0; 
+        }
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Performance Analyzer</h1>
+            <p>Analyze and compare AI model performance metrics</p>
+        </div>
+        
+        <div class="content">
+            <div class="card">
+                <h2>Submit New Analysis</h2>
+                <form id="jobForm">
+                    <div class="form-group">
+                        <label>Model Name:</label>
+                        <input type="text" id="modelName" placeholder="e.g., large_vision_model" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Batch Size:</label>
+                        <input type="number" id="batchSize" value="32">
+                    </div>
+                    <button type="submit">Start Performance Analysis</button>
+                </form>
+                
+                <h2>Recent Jobs</h2>
+                <div id="jobList">No jobs yet</div>
+            </div>
+            
+            <div class="card">
+                <h2>Performance Metrics</h2>
+                <p>Submit a job to see performance metrics</p>
+                <div id="chartContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        document.getElementById('jobForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const modelName = document.getElementById('modelName').value;
+            const batchSize = document.getElementById('batchSize').value;
+            
+            try {
+                const response = await fetch(API_BASE + '/jobs/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model_name: modelName,
+                        batch_size: parseInt(batchSize)
+                    })
+                });
+                
+                const job = await response.json();
+                alert('Job created successfully! Check the backend terminal for progress.');
+                document.getElementById('modelName').value = '';
+                
+            } catch (error) {
+                alert('Error: Could not connect to backend. Make sure it is running on port 8000.');
+            }
+        });
+        
+        // Fetch jobs every 3 seconds
+        setInterval(async () => {
+            try {
+                const response = await fetch(API_BASE + '/jobs/');
+                const jobs = await response.json();
+                
+                if (jobs.length > 0) {
+                    const jobsHtml = jobs.map(job => `
+                        <div style="border: 1px solid #ccc; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                            <strong>${job.model_name}</strong> - ${job.status}
+                            ${job.average_latency ? `
+                                <br>Latency: ${job.average_latency.toFixed(2)}ms
+                                <br>Throughput: ${job.throughput.toFixed(2)} req/sec
+                            ` : ''}
+                        </div>
+                    `).join('');
+                    document.getElementById('jobList').innerHTML = jobsHtml;
+                }
+            } catch (error) {
+                // Silently fail - backend might be starting
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
